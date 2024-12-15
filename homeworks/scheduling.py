@@ -7,13 +7,11 @@ def generate_chain_csp(n):
     var_list = ['x%d'%i for i in range(1, n+1)]
     csp = util.CSP()
     # Problem 0c
-    # BEGIN_YOUR_CODE (our solution is 4 lines of code, but don't worry if you deviate from this)
     var_list = [f'X{i}' for i in range(1, n + 1)]
     for i in range(n):
         csp.add_variable(var_list[i], [0, 1])
     for i in range(n-1):
         csp.add_binary_factor(var_list[i], var_list[i+1], lambda x, y: x ^ y)  # ^ is XOR
-    # END_YOUR_CODE
     return csp
 
 
@@ -59,16 +57,12 @@ class BacktrackingSearch():
         self.optimalAssignment = {}
         self.optimalWeight = 0
 
-        # Keep track of the number of optimal assignments and assignments. These
-        # two values should be identical when the CSP is unweighted or only has binary
-        # weights.
+   
         self.numOptimalAssignments = 0
         self.numAssignments = 0
 
-        # Keep track of the number of times backtrack() gets called.
         self.numOperations = 0
 
-        # Keep track of the number of operations to get to the very first successful
         # assignment (doesn't have to be optimal).
         self.firstAssignmentNumOperations = 0
 
