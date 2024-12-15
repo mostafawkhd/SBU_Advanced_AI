@@ -1,24 +1,30 @@
 import collections, util, copy
- 
-def generate_chain_csp(n):
+
+############################################################
+# Problem 0
+
+# Hint: Take a look at the CSP class and the CSP examples in util.py
+def create_chain_csp(n):
     # same domain for each variable
-    var_domain = [0, 1]
+    domain = [0, 1]
     # name variables as x_1, x_2, ..., x_n
-    var_list = ['x%d'%i for i in range(1, n+1)]
+    variables = ['x%d'%i for i in range(1, n+1)]
     csp = util.CSP()
     # Problem 0c
-    var_list = [f'X{i}' for i in range(1, n + 1)]
+    # BEGIN_YOUR_CODE (our solution is 4 lines of code, but don't worry if you deviate from this)
+    variables = [f'X{i}' for i in range(1, n + 1)]
     for i in range(n):
-        csp.add_variable(var_list[i], [0, 1])
+        csp.add_variable(variables[i], [0, 1])
     for i in range(n-1):
-        csp.add_binary_factor(var_list[i], var_list[i+1], lambda x, y: x ^ y)  # ^ is XOR
+        csp.add_binary_factor(variables[i], variables[i+1], lambda x, y: x ^ y)  # ^ is XOR
+    # END_YOUR_CODE
     return csp
 
 
 ############################################################
 # Problem 1
 
-def generate_nqueens_csp(n = 8):
+def create_nqueens_csp(n = 8):
     """
     Return an N-Queen problem on the board of size |n| * |n|.
     You should call csp.add_variable() and csp.add_binary_factor().
@@ -31,13 +37,13 @@ def generate_nqueens_csp(n = 8):
     csp = util.CSP()
     # Problem 1a
     # BEGIN_YOUR_CODE (our solution is 7 lines of code, but don't worry if you deviate from this)
-    var_list = [f'X{i}' for i in range(1, n + 1)]
-    var_domain = list(range(1, n + 1))  # domain of variable is the columns, row is defined by i
+    variables = [f'X{i}' for i in range(1, n + 1)]
+    domain = list(range(1, n + 1))  # domain of variable is the columns, row is defined by i
     for i in range(n):
-        csp.add_variable(var_list[i], list(range(1, n + 1)))  
+        csp.add_variable(variables[i], list(range(1, n + 1)))  
     for i in range(n):
         for j in range(i + 1, n):
-            csp.add_binary_factor(var_list[i], var_list[j], lambda x, y: x != y and abs(x - y) != j - i)  # check for same col and diagonal
+            csp.add_binary_factor(variables[i], variables[j], lambda x, y: x != y and abs(x - y) != j - i)  # check for same col and diagonal
     # END_YOUR_CODE
     return csp
 
@@ -57,12 +63,16 @@ class BacktrackingSearch():
         self.optimalAssignment = {}
         self.optimalWeight = 0
 
-   
+        # Keep track of the number of optimal assignments and assignments. These
+        # two values should be identical when the CSP is unweighted or only has binary
+        # weights.
         self.numOptimalAssignments = 0
         self.numAssignments = 0
 
+        # Keep track of the number of times backtrack() gets called.
         self.numOperations = 0
 
+        # Keep track of the number of operations to get to the very first successful
         # assignment (doesn't have to be optimal).
         self.firstAssignmentNumOperations = 0
 
@@ -247,41 +257,61 @@ class BacktrackingSearch():
                         mcv = var
             return mcv
             # END_YOUR_CODE
-# Problem 1c - arc consistency check using AC-3 algorithm
-def arc_consistency_check(self, var):
-    """
-    Perform the AC-3 algorithm. The goal is to reduce the size of the
-    domain values for the unassigned variables based on arc consistency.
 
-    @param var: The variable whose value has just been set.
-    """
-    def enforceArcConsistency(var1, var2):
-        remove = []
-        for value2 in self.domains[var2]:  # check if value2 is inconsistent with value1
-            consistent = False
-            for value1 in self.domains[var1]:
-                if self.csp.binaryFactors[var1][var2][value1][value2] > 0:  # consistent
-                    consistent = True
-                    break
-            if not consistent:
-                remove.append(value2)
+    def arc_consistency_check(self, var):
+        """
+        Perform the AC-3 algorithm. The goal is to reduce the size of the
+        domain values for the unassigned variables based on arc consistency.
 
-        if remove:
-            for r in remove:
-                self.domains[var2].remove(r)
-            return True
-        return False
-
-    s = set([var])
-    while s:
-        var1 = s.pop()
-        for var2 in self.csp.get_neighbor_vars(var1):
-            change = enforceArcConsistency(var1, var2)
-            if change:  # use new domain to update further
-                s.add(var2)
+        @param var: The variable whose value has just been set.
+        """
+        # Problem 1c
+        # Hint: How to get variables neighboring variable |var|?
+        # => for var2 in self.csp.get_neighbor_vars(var):
+        #       # use var2
+        #
+        # Hint: How to check if a value or two values are inconsistent?
+        # - For unary factors
+        #   => self.csp.unaryFactors[var1][val1] == 0
+        #
+        # - For binary factors
+        #   => self.csp.binaryFactors[var1][var2][val1][val2] == 0
+        #   (self.csp.binaryFactors[var1][var2] returns a nested dict of all assignments)
+        # Hint: Be careful when removing values from lists - trace through
+        #       your solution to make sure it behaves as expected.
 
 
-# Problem 2b - get_sum_variable function to add summing constraints
+        # BEGIN_YOUR_CODE (our solution is 15 lines of code, but don't worry if you deviate from this)
+        def enforceArcConsistency(var1, var2):
+            remove = []
+            for value2 in self.domains[var2]:  # check if value2 is inconsistent with value1
+                consistent = False
+                for value1 in self.domains[var1]:
+                    if self.csp.binaryFactors[var1][var2][value1][value2] > 0:  # consistent
+                        consistent = True
+                        break
+                if not consistent:
+                    remove.append(value2)
+            
+            if remove:
+                for r in remove:
+                    self.domains[var2].remove(r)
+                return True
+            return False
+
+        s = set([var])
+        while s:
+            var1 = s.pop()
+            for var2 in self.csp.get_neighbor_vars(var1):
+                change = enforceArcConsistency(var1, var2)
+                if change:  # use new domain to update further
+                    s.add(var2)
+        # END_YOUR_CODE
+
+
+############################################################
+# Problem 2b
+
 def get_sum_variable(csp, name, variables, maxSum):
     """
     Given a list of |variables| each with non-negative integer domains,
@@ -302,8 +332,9 @@ def get_sum_variable(csp, name, variables, maxSum):
         [0, maxSum] such that it's consistent with an assignment of |n|
         iff the assignment of |variables| sums to |n|.
     """
+    # BEGIN_YOUR_CODE (our solution is 18 lines of code, but don't worry if you deviate from this)
     result = ('sum', name, 'aggregated')
-    if len(variables) == 0:  # no input variable, check if sum is 0
+    if len(variables) == 0:  # no input variable, check is sum is 0
         csp.add_variable(result, [0])
         return result
     csp.add_variable(result, range(1, maxSum + 1))
@@ -320,9 +351,16 @@ def get_sum_variable(csp, name, variables, maxSum):
         csp.add_binary_factor(A_i, X_i, lambda x, y: x[1] == (x[0] + y))
     csp.add_binary_factor(A_i, result, lambda x, y: x[1] == y)
     return result
+    # END_YOUR_CODE
 
+# importing get_or_variable helper function from util
+get_or_variable = util.get_or_variable
 
-# Problem 3 - Scheduling CSP Construction
+############################################################
+# Problem 3
+
+# A class providing methods to generate CSP that can solve the course scheduling
+# problem.
 class SchedulingCSPConstructor():
 
     def __init__(self, bulletin, profile):
@@ -402,11 +440,16 @@ class SchedulingCSPConstructor():
 
         @param csp: The CSP where the additional constraints will be added to.
         """
+        # Problem 3a
+        #Hint: If a request doesn't specify the quarter(s), do nothing.
+        
+        # BEGIN_YOUR_CODE (our solution is 5 lines of code, but don't worry if you deviate from this)
         for request in self.profile.requests:
             for quarter in self.profile.quarters:
                 if quarter not in request.quarters:
                     csp.add_unary_factor((request, quarter), \
                         lambda cid: cid is None)
+        # END_YOUR_CODE
 
     def add_request_weights(self, csp):
         """
@@ -438,16 +481,23 @@ class SchedulingCSPConstructor():
 
         @param csp: The CSP where the additional constraints will be added to.
         """
+        # Iterate over all request courses
         for req in self.profile.requests:
             if len(req.prereqs) == 0: continue
+            # Iterate over all possible quarters
             for quarter_i, quarter in enumerate(self.profile.quarters):
+                # Iterate over all prerequisites of this request
                 for pre_cid in req.prereqs:
+                    # Find the request with this prerequisite
                     for pre_req in self.profile.requests:
                         if pre_cid not in pre_req.cids: continue
+                        # Make sure this prerequisite is taken before the requested course(s)
                         prereq_vars = [(pre_req, q) \
                             for i, q in enumerate(self.profile.quarters) if i < quarter_i]
                         v = (req, quarter)
                         orVar = get_or_variable(csp, (v, pre_cid), prereq_vars, pre_cid)
+                        # Note this constraint is enforced only when the course is taken
+                        # in `quarter` (that's why we test `not val`)
                         csp.add_binary_factor(orVar, v, lambda o, val: not val or o)
 
     def add_unit_constraints(self, csp):
@@ -465,6 +515,18 @@ class SchedulingCSPConstructor():
 
         @param csp: The CSP where the additional constraints will be added to.
         """
+        # Problem 3b
+        # Hint 1: read the documentation above carefully
+        # Hint 2: you must ensure that the sum of units per quarter for your schedule
+        #         are within the min and max threshold inclusive
+        # Hint 3: the domain for each (courseId, quarter) variable should contain 0
+        #         because the course might not be taken
+        # Hint 4: use nested functions and lambdas like what get_or_variable and
+        #         add_prereq_constraints do
+        # Hint 5: don't worry about quarter constraints in each Request as they'll
+        #         be enforced by the constraints added by add_quarter_constraints
+
+        # BEGIN_YOUR_CODE (our solution is 16 lines of code, but don't worry if you deviate from this)
         for quarter in self.profile.quarters:
             new_vars = []
             for request in self.profile.requests:
@@ -472,11 +534,12 @@ class SchedulingCSPConstructor():
                     var = (cid, quarter)
                     minVal = self.bulletin.courses[cid].minUnits
                     maxVal = self.bulletin.courses[cid].maxUnits
-                    csp.add_variable(var, list(range(minVal, maxVal + 1)) + [0])  # 0 if course not taken in that quarter
+                    csp.add_variable(var, list(range(minVal, maxVal + 1)) + [0])  #  0 if course not taken in that quarter
                     new_vars.append(var)
                     csp.add_binary_factor((request, quarter), var, lambda request_cid, course_unit: course_unit > 0 if request_cid == cid else course_unit == 0)
             quarter_sum = get_sum_variable(csp, quarter, new_vars, self.profile.maxUnits)
             csp.add_unary_factor(quarter_sum, lambda x: self.profile.minUnits <= x <= self.profile.maxUnits)
+        # END_YOUR_CODE
 
     def add_all_additional_constraints(self, csp):
         """
