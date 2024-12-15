@@ -1,151 +1,157 @@
+#!/usr/bin/python
+
 import random
 import collections
 import math
 import sys
 from util import *
 
-def getWordFeatures(inputString):
-    """
-    Extracts the word features from a given string.
-    Words are identified by whitespace delimiters.
-
-    @param inputString: The input string to process.
-    @return: A dictionary where keys are words and values are their counts.
-    Example: "This is a test" --> {'This': 1, 'is': 1, 'a': 1, 'test': 1}
-    """
-    # Create a default dictionary to count occurrences
-    wordCounts = collections.defaultdict(int)
-    for word in inputString.split():
-        wordCounts[word] += 1  # Increment count for each word
-    return wordCounts
+############################################################
+# Problem 3: binary classification
+############################################################
 
 ############################################################
-# Task 3b: Stochastic Gradient Descent Implementation
+# Problem 3a: feature extraction
 
-def trainModel(trainingData, testingData, featureProcessor, iterations, learningRate):
+def extractWordFeatures(x):
+    """
+    Extract word features for a string x. Words are delimited by
+    whitespace characters only.
+    @param string x: 
+    @return dict: feature vector representation of x.
+    Example: "I am what I am" --> {'I': 2, 'am': 2, 'what': 1}
+    """
+    # BEGIN_YOUR_CODE (our solution is 4 lines of code, but don't worry if you deviate from this)
+    features = collections.defaultdict(int)
+    for word in x.split():
+        features[word] += 1
+    return features
+    # END_YOUR_CODE
+
+############################################################
+# Problem 3b: stochastic gradient descent
+
+def learnPredictor(trainExamples, testExamples, featureExtractor, numIters, eta):
     '''
-    Train a model using stochastic gradient descent.
+    Given |trainExamples| and |testExamples| (each one is a list of (x,y)
+    pairs), a |featureExtractor| to apply to x, and the number of iterations to
+    train |numIters|, the step size |eta|, return the weight vector (sparse
+    feature vector) learned.
 
-    @param trainingData: List of (input, label) tuples for training.
-    @param testingData: List of (input, label) tuples for testing.
-    @param featureProcessor: Function to extract features from input data.
-    @param iterations: Number of training iterations.
-    @param learningRate: Step size for updating weights.
-    @return: A dictionary representing the trained weight vector.
+    You should implement stochastic gradient descent.
+
+    Note: only use the trainExamples for training!
+    You should call evaluatePredictor() on both trainExamples and testExamples
+    to see how you're doing as you learn after each iteration.
     '''
-    # Initialize weights as an empty dictionary
-    weights = {}
+    # featureExtractor = extractCharacterFeatures(6) # for problem 3e
+    weights = {}  # feature => weight
+    # BEGIN_YOUR_CODE (our solution is 12 lines of code, but don't worry if you deviate from this)
+    def predictor(x):
+        return 1 if dotProduct(weights, featureExtractor(x)) > 0 else -1
 
-    # Define a predictor function to classify input data
-    def classify(inputData):
-        return 1 if dotProduct(weights, featureProcessor(inputData)) > 0 else -1
-
-    # Initialize weights for all features
-    for data, label in trainingData:
-        for feature in featureProcessor(data):
+    for x, y in trainExamples:
+        for feature in featureExtractor(x):
             weights[feature] = 0
-
-    # Perform SGD for the specified number of iterations
-    for epoch in range(iterations):
-        for data, label in trainingData:
-            # Update weights if prediction is incorrect
-            if dotProduct(weights, featureProcessor(data)) * label < 1:
-                increment(weights, learningRate * label, featureProcessor(data))
-        # Evaluate performance (optional)
-        # print(evaluatePredictor(testingData, classify))
-
+    for i in range(numIters):
+        for x, y in trainExamples:
+            if dotProduct(weights, featureExtractor(x)) * y < 1:
+                increment(weights, eta * y, featureExtractor(x))
+        # print(evaluatePredictor(testExamples, predictor))
+    # END_YOUR_CODE
     return weights
 
 ############################################################
-# Task 3c: Dataset Generation for Testing
+# Problem 3c: generate test case
 
-def createDataset(sampleCount, referenceWeights):
+def generateDataset(numExamples, weights):
     '''
-    Generate a dataset of examples consistent with the provided weights.
-
-    @param sampleCount: Number of examples to generate.
-    @param referenceWeights: Dictionary representing the weight vector.
-    @return: List of (featureVector, label) tuples.
+    Return a set of examples (phi(x), y) randomly which are classified correctly by
+    |weights|.
     '''
-    random.seed(42)  # Ensure reproducibility
-
-    def createSample():
-        # Generate a feature vector with random values
-        featureVector = {key: random.random() for key in random.sample(list(referenceWeights), len(referenceWeights) - 1)}
-        # Determine label based on the weight vector
-        label = 1 if dotProduct(referenceWeights, featureVector) > 0 else -1
-        return (featureVector, label)
-
-    return [createSample() for _ in range(sampleCount)]
+    random.seed(42)
+    # Return a single example (phi(x), y).
+    # phi(x) should be a dict whose keys are a subset of the keys in weights
+    # and values can be anything (randomize!) with a nonzero score under the given weight vector.
+    # y should be 1 or -1 as classified by the weight vector.
+    def generateExample():
+        # BEGIN_YOUR_CODE (our solution is 2 lines of code, but don't worry if you deviate from this)
+        phi = {feature: random.random() for feature in random.sample(list(weights), len(weights) - 1)}
+        y = 1 if dotProduct(weights, phi) > 0 else -1
+        # END_YOUR_CODE
+        return (phi, y)
+    return [generateExample() for _ in range(numExamples)]
 
 ############################################################
-# Task 3e: Extracting Character Features
+# Problem 3e: character features
 
-def getCharacterFeatures(n):
+def extractCharacterFeatures(n):
     '''
-    Generate a function to extract n-gram character features from strings.
-
-    @param n: The size of the n-grams.
-    @return: A function to process input strings into n-gram feature vectors.
+    Return a function that takes a string |x| and returns a sparse feature
+    vector consisting of all n-grams of |x| without spaces mapped to their n-gram counts.
+    EXAMPLE: (n = 3) "I like tacos" --> {'Ili': 1, 'lik': 1, 'ike': 1, ...
+    You may assume that n >= 1.
     '''
-    def process(inputString):
-        # Remove spaces and initialize a feature counter
-        featureCounts = collections.defaultdict(int)
-        cleanedString = inputString.replace(' ', '')
-
-        # Extract n-grams
-        for i in range(len(cleanedString) - n + 1):
-            featureCounts[cleanedString[i:i+n]] += 1
-
-        return featureCounts
-
-    return process
+    def extract(x):
+        # BEGIN_YOUR_CODE (our solution is 6 lines of code, but don't worry if you deviate from this)
+        features = collections.defaultdict(int)
+        s = x.replace(' ', '')
+        for i in range(len(s)+1-n):
+            features[s[i:i+n]] += 1
+        return features
+        # END_YOUR_CODE
+    return extract
 
 ############################################################
-# Task 4: k-Means Clustering Algorithm
+# Problem 4: k-means
 ############################################################
 
-def performKMeans(dataPoints, clusterCount, maxIterations):
+
+def kmeans(examples, K, maxIters):
     '''
-    Perform k-means clustering on the provided data.
-
-    @param dataPoints: List of examples (sparse vectors as dictionaries).
-    @param clusterCount: Number of desired clusters.
-    @param maxIterations: Maximum number of iterations for convergence.
-    @return: Tuple (centroids, assignments, loss).
+    examples: list of examples, each example is a string-to-double dict representing a sparse vector.
+    K: number of desired clusters. Assume that 0 < K <= |examples|.
+    maxIters: maximum number of iterations to run (you should terminate early if the algorithm converges).
+    Return: (length K list of cluster centroids,
+            list of assignments (i.e. if examples[i] belongs to centers[j], then assignments[i] = j)
+            final reconstruction loss)
     '''
-    def computeDistance(vectorA, vectorB):
-        # Calculate squared distance between two sparse vectors
-        return sum((vectorA.get(key, 0) - vectorB.get(key, 0))**2 for key in set(vectorA) | set(vectorB))
+    # BEGIN_YOUR_CODE (our solution is 25 lines of code, but don't worry if you deviate from this)
+    def distance(x, mu):
+        """ Return the squared distance between two vectors x and y """
+        return sum((x[i] - mu[i])**2 for i in x)
 
-    # Initialize centroids randomly
-    centroids = random.sample(dataPoints, clusterCount)
-    assignments = [0] * len(dataPoints)
+    centers = random.sample(examples, K)
+    z = [0] * len(examples)
+    for t in range(maxIters):
+        # step 1
+        for i, x in enumerate(examples):
+            min_d = 1000000000
+            for k, mu in enumerate(centers):
+                d = distance(x, mu)
+                if d < min_d:
+                    min_d = d
+                    z[i] = k
+        # step 2
+        for k, mu in enumerate(centers):
+            sum_x = collections.defaultdict(float)
+            count = z.count(k)
+            for i, x in enumerate(examples):
+                if z[i] == k:
+                    increment(sum_x, 1 / count, x)
+                centers[k] = sum_x
+    # calculate loss
+    loss = 0
+    for i, x in enumerate(examples):
+        diff = x.copy()
+        increment(diff, -1, centers[z[i]])
+        loss += dotProduct(diff, diff)
 
-    for iteration in range(maxIterations):
-        # Step 1: Assign each point to the closest centroid
-        for idx, point in enumerate(dataPoints):
-            minDistance = float('inf')
-            for clusterIdx, centroid in enumerate(centroids):
-                distance = computeDistance(point, centroid)
-                if distance < minDistance:
-                    minDistance = distance
-                    assignments[idx] = clusterIdx
+    return (centers, z, loss)
+    # END_YOUR_CODE
 
-        # Step 2: Update centroids based on assignments
-        for clusterIdx in range(clusterCount):
-            aggregatedPoint = collections.defaultdict(float)
-            count = assignments.count(clusterIdx)
-            for idx, point in enumerate(dataPoints):
-                if assignments[idx] == clusterIdx:
-                    increment(aggregatedPoint, 1 / count, point)
-            centroids[clusterIdx] = aggregatedPoint
-
-    # Compute reconstruction loss
-    reconstructionLoss = 0
-    for idx, point in enumerate(dataPoints):
-        diffVector = point.copy()
-        increment(diffVector, -1, centroids[assignments[idx]])
-        reconstructionLoss += dotProduct(diffVector, diffVector)
-
-    return (centroids, assignments, reconstructionLoss)
+# examples = generateClusteringExamples(2, 4, 2)
+# K = 2
+# maxIters = 5
+# centers, assignments, loss = kmeans(examples, K, maxIters)
+# outputClusters('clusters.txt', examples, centers, assignments)
